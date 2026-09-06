@@ -86,6 +86,21 @@ describe('createSymlink', () => {
     expect(await fs.readlink(link)).toBe(correctTarget);
   });
 
+  it('is idempotent when re-run against a pre-existing correct hardlink', async () => {
+    // Simulates re-running `add` on Windows after the symlink->hardlink
+    // fallback already ran once — must not throw "refusing to overwrite".
+    const link = path.join(tmpDir, 'profile', 'history.jsonl');
+    const target = path.join(tmpDir, 'shared', 'history.jsonl');
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, 'line1\n');
+    await fs.mkdir(path.dirname(link), { recursive: true });
+    await fs.link(target, link);
+
+    await createSymlink(link, target, false); // should not throw
+
+    expect(await fs.readFile(link, 'utf8')).toBe('line1\n');
+  });
+
   it('refuses to clobber a real file that is not already a symlink', async () => {
     const link = path.join(tmpDir, 'profile', 'settings.json');
     const target = path.join(tmpDir, 'shared', 'settings.json');
@@ -122,6 +137,36 @@ describe('checkSymlinkHealth', () => {
     await fs.writeFile(link, '{}');
 
     const health = await checkSymlinkHealth('settings.json', link, path.join(tmpDir, 'shared', 'settings.json'));
+    expect(health.status).toBe('not-a-symlink');
+  });
+
+  it('reports "ok" for a hardlink to the right target (the Windows file fallback)', async () => {
+    // fs.link is cross-platform, so this exercises the health-check side of
+    // the win32 hardlink fallback without needing an actual Windows runner
+    // (createSymlink's platform branch itself only fires on real win32,
+    // verified in CI — see .github/workflows/test.yml).
+    const target = path.join(tmpDir, 'shared', 'history.jsonl');
+    const link = path.join(tmpDir, 'profile', 'history.jsonl');
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, 'line1\n');
+    await fs.mkdir(path.dirname(link), { recursive: true });
+    await fs.link(target, link);
+
+    const health = await checkSymlinkHealth('history.jsonl', link, target);
+    expect(health.status).toBe('ok');
+  });
+
+  it('reports "not-a-symlink" for a hardlink to the wrong file', async () => {
+    const target = path.join(tmpDir, 'shared', 'history.jsonl');
+    const wrongFile = path.join(tmpDir, 'shared', 'other.jsonl');
+    const link = path.join(tmpDir, 'profile', 'history.jsonl');
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, 'a\n');
+    await fs.writeFile(wrongFile, 'b\n');
+    await fs.mkdir(path.dirname(link), { recursive: true });
+    await fs.link(wrongFile, link);
+
+    const health = await checkSymlinkHealth('history.jsonl', link, target);
     expect(health.status).toBe('not-a-symlink');
   });
 
