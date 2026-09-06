@@ -1,0 +1,44 @@
+{
+  "name": "claude-multi",
+  "version": "0.1.0",
+  "description": "Manage and switch between multiple Claude Code accounts without losing session history, context, or transcripts.",
+  "type": "module",
+  "license": "MIT",
+  "author": "",
+  "bin": {
+    "claude-multi": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "commander": "^12.1.0",
+    "execa": "^9.5.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  },
+  "keywords": [
+    "claude-code",
+    "cli",
+    "multi-account",
+    "profiles"
+  ]
+}
