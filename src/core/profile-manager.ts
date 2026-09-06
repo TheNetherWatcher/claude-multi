@@ -4,24 +4,14 @@ import {
   PROFILES_DIR,
   SHARED_DIR,
   SHARED_ENTRIES,
+  SHARED_DIR_ENTRIES,
   AUTH_ENTRIES,
 } from './constants.js';
 import { createSymlink, checkSymlinkHealth } from './symlink-manager.js';
 import type { ProfileInfo, SymlinkHealth } from './types.js';
 
-const DIR_ENTRIES = new Set([
-  'projects',
-  'sessions',
-  'tasks',
-  'plans',
-  'file-history',
-  'skills',
-  'plugins',
-  'mcp-servers',
-]);
-
 function isDirEntry(entry: string): boolean {
-  return DIR_ENTRIES.has(entry);
+  return SHARED_DIR_ENTRIES.has(entry);
 }
 
 export function profileDir(name: string): string {

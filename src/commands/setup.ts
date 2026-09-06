@@ -5,23 +5,15 @@ import {
   DEFAULT_CLAUDE_CONFIG_DIR,
   SHARED_DIR,
   SHARED_ENTRIES,
+  SHARED_DIR_ENTRIES,
   PROFILES_DIR,
 } from '../core/constants.js';
-import { profileDir, sharedEntryPath } from '../core/profile-manager.js';
+import { profileDir, sharedEntryPath, profileExists } from '../core/profile-manager.js';
 import { createSymlink } from '../core/symlink-manager.js';
 import { readState, writeState } from '../core/state.js';
+import { getCredentialStore } from '../core/credential-store.js';
+import { captureGlobalState } from '../core/global-state.js';
 import { log } from '../utils/logger.js';
-
-const DIR_ENTRIES = new Set([
-  'projects',
-  'sessions',
-  'tasks',
-  'plans',
-  'file-history',
-  'skills',
-  'plugins',
-  'mcp-servers',
-]);
 
 async function pathExists(target: string): Promise<boolean> {
   try {
@@ -74,6 +66,16 @@ export async function setupCommand(): Promise<void> {
     return;
   }
 
+  if (await profileExists('primary')) {
+    log.error(
+      `A profile named "primary" already exists at ${profileDir('primary')}, but setup hasn't ` +
+        `run before (state.json has no record of it). Refusing to overwrite it — rename or ` +
+        `remove that profile first if you really want setup to reclaim the name.`
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const primaryDir = profileDir('primary');
 
   // Move the real ~/.claude dir into profiles/primary wholesale first, so
@@ -84,7 +86,7 @@ export async function setupCommand(): Promise<void> {
   for (const entry of SHARED_ENTRIES) {
     const inPrimary = path.join(primaryDir, entry);
     const inShared = sharedEntryPath(entry);
-    const isDir = DIR_ENTRIES.has(entry);
+    const isDir = SHARED_DIR_ENTRIES.has(entry);
 
     if ((await pathExists(inPrimary)) && !(await isSymlink(inPrimary))) {
       // Real data lives in the adopted profile — move it into the shared
@@ -98,6 +100,13 @@ export async function setupCommand(): Promise<void> {
   // Symlink the original ~/.claude path to profiles/primary so bare `claude`
   // invocations (no CLAUDE_CONFIG_DIR set) keep working exactly as before.
   await fs.symlink(primaryDir, DEFAULT_CLAUDE_CONFIG_DIR, process.platform === 'win32' ? 'junction' : undefined);
+
+  // The adopted directory was already logged in — snapshot that identity
+  // into the profile now, otherwise the first `run primary` after a
+  // different profile has run would silently pick up whichever account's
+  // credential/oauthAccount is currently live instead of primary's own.
+  await getCredentialStore().capture('primary', primaryDir);
+  await captureGlobalState(primaryDir);
 
   await writeState({ ...state, primaryAdopted: true, defaultProfile: 'primary' });
 
