@@ -1,9 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import { execa } from 'execa';
 import { KEYCHAIN_SERVICE } from './constants.js';
 import type { CredentialStore } from './types.js';
+import { log } from '../utils/logger.js';
+
+/** macOS `security` exit code for "no such keychain item" — the only failure worth swallowing silently. */
+const SEC_ITEM_NOT_FOUND = 44;
 
 const PROFILE_CRED_FILE = '.claude-multi-credential.json';
 
@@ -53,9 +56,32 @@ export class FileCredentialStore implements CredentialStore {
  *                save it, since Claude Code may silently refresh the token
  *                mid-session — skipping this would log the profile out.
  */
+interface KeychainSnapshot {
+  account: string;
+  secret: string;
+}
+
 export class KeychainCredentialStore implements CredentialStore {
   private credentialPath(profileDir: string): string {
     return path.join(profileDir, PROFILE_CRED_FILE);
+  }
+
+  /**
+   * The account attribute on the real entry may not be the OS username —
+   * Claude Code decides that, not us. Reading it back (rather than assuming
+   * `os.userInfo().username`) means restore() re-creates the exact item
+   * Claude Code originally wrote, instead of a lookalike under a possibly
+   * different account that `security add-generic-password -U` would treat
+   * as a distinct item (leaving two ambiguous entries under one service name).
+   */
+  private async readAccountAttribute(): Promise<string | null> {
+    try {
+      const { stdout } = await execa('security', ['find-generic-password', '-s', KEYCHAIN_SERVICE]);
+      const match = stdout.match(/"acct"<blob>="(.*)"/);
+      return match?.[1] ?? null;
+    } catch {
+      return null;
+    }
   }
 
   async capture(profileName: string, profileDir: string): Promise<void> {
@@ -68,11 +94,21 @@ export class KeychainCredentialStore implements CredentialStore {
         '-w',
       ]);
       secret = stdout;
-    } catch {
-      // Nothing in the Keychain yet (e.g. user never ran /login) — nothing to capture.
+    } catch (err) {
+      const exitCode = (err as { exitCode?: number }).exitCode;
+      if (exitCode !== SEC_ITEM_NOT_FOUND) {
+        // Something other than "no such item" — e.g. Keychain locked, `security`
+        // missing, access denied. Swallowing this silently would look like a
+        // successful capture while actually leaving the profile's saved
+        // credential stale (or never written in the first place).
+        log.warn(`Could not read Keychain entry "${KEYCHAIN_SERVICE}" for profile "${profileName}": ${err}`);
+      }
       return;
     }
-    await fs.writeFile(this.credentialPath(profileDir), secret, { mode: 0o600 });
+
+    const account = (await this.readAccountAttribute()) ?? '';
+    const snapshot: KeychainSnapshot = { account, secret };
+    await fs.writeFile(this.credentialPath(profileDir), JSON.stringify(snapshot), { mode: 0o600 });
   }
 
   async restore(profileName: string, profileDir: string): Promise<void> {
@@ -80,8 +116,7 @@ export class KeychainCredentialStore implements CredentialStore {
     if (!(await pathExists(credPath))) {
       return; // profile has no saved credential yet; let Claude Code prompt /login
     }
-    const secret = await fs.readFile(credPath, 'utf8');
-    const account = os.userInfo().username;
+    const { account, secret }: KeychainSnapshot = JSON.parse(await fs.readFile(credPath, 'utf8'));
 
     // Overwrite (not just add) the single shared Keychain entry so this
     // profile's token is what `claude` reads next.
