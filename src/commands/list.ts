@@ -1,3 +1,4 @@
+import path from 'node:path';
 import pc from 'picocolors';
 import { listProfiles, getProfileInfo, checkProfileHealth, profileDir } from '../core/profile-manager.js';
 import { readState } from '../core/state.js';
@@ -11,14 +12,16 @@ export async function listCommand(): Promise<void> {
   }
 
   const state = await readState();
-  const activeEnvDir = process.env.CLAUDE_CONFIG_DIR;
+  const activeEnvDir = process.env.CLAUDE_CONFIG_DIR
+    ? path.resolve(process.env.CLAUDE_CONFIG_DIR)
+    : undefined;
 
   for (const name of profiles.sort()) {
     const info = await getProfileInfo(name, state.defaultProfile);
     const health = await checkProfileHealth(name);
     const broken = health.filter((h) => h.status !== 'ok');
 
-    const isActive = activeEnvDir ? activeEnvDir === profileDir(name) : false;
+    const isActive = activeEnvDir ? activeEnvDir === path.resolve(profileDir(name)) : false;
     const markers = [
       info.isDefault ? pc.cyan('[default]') : '',
       isActive ? pc.green('[active]') : '',
