@@ -9,8 +9,13 @@ export const PROFILES_DIR = path.join(CLAUDE_MULTI_HOME, 'profiles');
 export const SHARED_DIR = path.join(CLAUDE_MULTI_HOME, 'shared');
 export const STATE_FILE = path.join(CLAUDE_MULTI_HOME, 'state.json');
 
-/** Default location Claude Code itself uses when CLAUDE_CONFIG_DIR is unset. */
-export const DEFAULT_CLAUDE_CONFIG_DIR = path.join(os.homedir(), '.claude');
+/**
+ * Default location Claude Code itself uses when CLAUDE_CONFIG_DIR is unset.
+ * Overridable for tests — `setup` does an `fs.rename` on this path, so it
+ * must never resolve to a real ~/.claude by accident in an automated run.
+ */
+export const DEFAULT_CLAUDE_CONFIG_DIR =
+  process.env.CLAUDE_MULTI_DEFAULT_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
 
 /**
  * Entries symlinked from each profile back into the shared store.
@@ -28,6 +33,18 @@ export const SHARED_ENTRIES = [
   'mcp-servers',
   'settings.json',
 ] as const;
+
+/** Which SHARED_ENTRIES are directories vs. plain files — single source of truth. */
+export const SHARED_DIR_ENTRIES = new Set<string>([
+  'projects',
+  'sessions',
+  'tasks',
+  'plans',
+  'file-history',
+  'skills',
+  'plugins',
+  'mcp-servers',
+]);
 
 /**
  * Entries that must stay private per-profile: account identity, tokens,
@@ -48,3 +65,20 @@ export const KEYCHAIN_SERVICE = 'Claude Code-credentials';
 
 export const SHELL_BLOCK_START = '# >>> claude-multi >>>';
 export const SHELL_BLOCK_END = '# <<< claude-multi <<<';
+
+/**
+ * Claude Code keeps a SECOND state file fixed at $HOME/.claude.json —
+ * outside $CLAUDE_CONFIG_DIR entirely, so pointing CLAUDE_CONFIG_DIR at a
+ * profile does not isolate it. Most of its content (project trust registry,
+ * migration flags, machine id) is genuinely machine-global and fine to
+ * share. A small number of fields are account identity and leak across
+ * profiles unless explicitly captured/restored — see core/global-state.ts.
+ *
+ * Overridable via CLAUDE_MULTI_HOME_STATE_FILE so tests (and anyone
+ * double-checking this in a throwaway sandbox) never touch the real file.
+ */
+export const HOME_STATE_FILE =
+  process.env.CLAUDE_MULTI_HOME_STATE_FILE ?? path.join(os.homedir(), '.claude.json');
+
+/** Account-identity fields inside HOME_STATE_FILE that must be captured/restored per profile. */
+export const HOME_STATE_ACCOUNT_KEYS = ['oauthAccount', 'claudeCodeFirstTokenDate'] as const;
