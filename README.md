@@ -80,7 +80,31 @@ npm run build       # compile to dist/
 npm test            # vitest
 ```
 
+## Cross-platform status
+
+| Platform | Symlinks/shared state | Auth isolation | Shell integration |
+|---|---|---|---|
+| macOS | full (real symlinks) | full (Keychain swap) | zsh, bash, fish |
+| Linux/WSL | full (real symlinks) | full (file-based, no swap needed) | zsh, bash, fish |
+| Windows | full (junctions for dirs, hardlink fallback for files) | **not yet** — see below | PowerShell (`$PROFILE`) |
+
+Windows directories use junctions (no admin/Developer Mode required); files
+(`history.jsonl`, `settings.json`) fall back to a hardlink when a real
+symlink isn't permitted, which needs no special privilege.
+
+**Why Windows auth isolation isn't built yet:** macOS has a documented CLI
+(`security`) for reading/writing a Keychain item, which is how the
+credential swap in `core/credential-store.ts` works. Windows Credential
+Manager has no equivalent — there's no clean "read this stored password
+back out" CLI, so building this correctly needs an empirical check on a
+real Windows box of what Claude Code actually does there (same way the
+macOS Keychain behavior and the `$HOME/.claude.json` `oauthAccount` leak
+were confirmed by inspection rather than assumed). CI (`.github/workflows/test.yml`)
+runs the test suite on `windows-latest` so the symlink/hardlink and
+PowerShell-profile logic get verified on a real Windows runner on every
+push — auth isolation is the one piece still open, tracked as future work.
+
 ## Known limitations
 
-- Windows: no Credential Manager isolation yet; profiles/symlinks work (via junctions) but auth won't actually separate.
+- Windows: no Credential Manager isolation yet (see above); everything else works.
 - Running two profiles concurrently can interleave writes to the shared `history.jsonl`. Fine in practice (small, append-only writes) but not file-locked — avoid it if you can.
