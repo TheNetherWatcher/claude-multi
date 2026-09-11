@@ -18,7 +18,9 @@ Claude Code splits its state into two categories:
 
 `claude-multi` puts each account's auth files in its own directory (`~/.claude-multi/profiles/<name>`) and symlinks everything else back to one shared store (`~/.claude-multi/shared`). Point `CLAUDE_CONFIG_DIR` at a profile and Claude Code sees its own account plus your full shared history.
 
-**The macOS catch:** Claude Code stores its OAuth token in the system Keychain under a fixed service name, not inside `$CLAUDE_CONFIG_DIR`. `CLAUDE_CONFIG_DIR` alone does nothing for auth isolation there — every profile would read the same Keychain entry. `claude-multi` handles this by keeping a private copy of each profile's Keychain secret and swapping it into the shared entry immediately before/after each `claude` invocation. On Linux, the token is just a file inside `CLAUDE_CONFIG_DIR`, so no swap is needed. Windows Credential Manager isolation isn't implemented yet — flagged, not faked.
+**The macOS catch:** Claude Code stores its OAuth token in the system Keychain under a fixed service name, not inside `$CLAUDE_CONFIG_DIR`. `CLAUDE_CONFIG_DIR` alone does nothing for auth isolation there — every profile would read the same Keychain entry. `claude-multi` handles this by keeping a private copy of each profile's Keychain secret and swapping it into the shared entry immediately before/after each `claude` invocation. On Linux, the token is just a file inside `CLAUDE_CONFIG_DIR`, so no swap is needed.
+
+**Platform support:** macOS and Linux are the supported targets for now. Windows has some code paths in place (junctions, a hardlink fallback, PowerShell shell integration) but isn't officially supported or tested — treat it as best-effort, not guaranteed to work.
 
 ## Install
 
@@ -85,29 +87,15 @@ npm test            # vitest
 
 ## Cross-platform status
 
-| Platform | Symlinks/shared state | Auth isolation | Shell integration |
-|---|---|---|---|
-| macOS | full (real symlinks) | full (Keychain swap) | zsh, bash, fish |
-| Linux/WSL | full (real symlinks) | full (file-based, no swap needed) | zsh, bash, fish |
-| Windows | full (junctions for dirs, hardlink fallback for files) | **not yet** — see below | PowerShell (`$PROFILE`) |
-
-Windows directories use junctions (no admin/Developer Mode required); files
-(`history.jsonl`, `settings.json`) fall back to a hardlink when a real
-symlink isn't permitted, which needs no special privilege.
-
-**Why Windows auth isolation isn't built yet:** macOS has a documented CLI
-(`security`) for reading/writing a Keychain item, which is how the
-credential swap in `core/credential-store.ts` works. Windows Credential
-Manager has no equivalent — there's no clean "read this stored password
-back out" CLI, so building this correctly needs an empirical check on a
-real Windows box of what Claude Code actually does there (same way the
-macOS Keychain behavior and the `$HOME/.claude.json` `oauthAccount` leak
-were confirmed by inspection rather than assumed) — auth isolation is the
-one piece still open, tracked as future work.
+| Platform | Status |
+|---|---|
+| macOS | supported |
+| Linux/WSL | supported |
+| Windows | best-effort, not officially supported — junctions/hardlink-fallback/PowerShell integration exist in code but aren't tested or maintained against |
 
 ## Known limitations
 
-- Windows: no Credential Manager isolation yet (see above); everything else works.
+- Windows isn't officially supported (see above).
 - Running two profiles concurrently can interleave writes to the shared `history.jsonl`. Fine in practice (small, append-only writes) but not file-locked — avoid it if you can.
 
 ## Contributing
