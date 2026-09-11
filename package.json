@@ -5,6 +5,14 @@
   "type": "module",
   "license": "MIT",
   "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheNetherWatcher/claude-multi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TheNetherWatcher/claude-multi/issues"
+  },
+  "homepage": "https://github.com/TheNetherWatcher/claude-multi#readme",
   "bin": {
     "claude-multi": "./dist/index.js"
   },
