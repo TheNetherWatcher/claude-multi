@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { stripTrailingSep } from '../../src/core/symlink-manager.js';
 
 // Every path this test touches is sandboxed via env override — none of
 // them may ever resolve to a real $HOME path. `setup` does an fs.rename on
@@ -71,7 +72,7 @@ describe('setupCommand adoption', () => {
     // Original path now symlinks to the profile, so bare `claude` still works.
     const originalStat = await fs.lstat(fakeDefaultClaudeDir);
     expect(originalStat.isSymbolicLink()).toBe(true);
-    expect(await fs.readlink(fakeDefaultClaudeDir)).toBe(primaryDir);
+    expect(stripTrailingSep(await fs.readlink(fakeDefaultClaudeDir))).toBe(primaryDir);
 
     // Shared data actually moved into the shared store, not left behind or duplicated.
     const sharedProjects = await fs.readdir(path.join(process.env.CLAUDE_MULTI_HOME!, 'shared', 'projects'));

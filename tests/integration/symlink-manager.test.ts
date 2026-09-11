@@ -6,7 +6,15 @@ import {
   createSymlink,
   checkSymlinkHealth,
   ensureSharedTarget,
+  stripTrailingSep,
 } from '../../src/core/symlink-manager.js';
+
+// Windows junctions report their reparse target with a trailing separator
+// (readlink returns `...\projects\`, never `...\projects`) — strip it so
+// these assertions aren't platform-flaky.
+async function readlinkNormalized(p: string): Promise<string> {
+  return stripTrailingSep(await fs.readlink(p));
+}
 
 let tmpDir: string;
 
@@ -51,7 +59,7 @@ describe('createSymlink', () => {
 
     const linkStat = await fs.lstat(link);
     expect(linkStat.isSymbolicLink()).toBe(true);
-    expect(await fs.readlink(link)).toBe(target);
+    expect(await readlinkNormalized(link)).toBe(target);
     expect((await fs.stat(target)).isDirectory()).toBe(true);
   });
 
@@ -72,7 +80,7 @@ describe('createSymlink', () => {
     await createSymlink(link, target, true);
     await createSymlink(link, target, true); // should not throw
 
-    expect(await fs.readlink(link)).toBe(target);
+    expect(await readlinkNormalized(link)).toBe(target);
   });
 
   it('repairs a stale symlink pointing at the wrong target', async () => {
@@ -83,7 +91,7 @@ describe('createSymlink', () => {
     await createSymlink(link, wrongTarget, true);
     await createSymlink(link, correctTarget, true);
 
-    expect(await fs.readlink(link)).toBe(correctTarget);
+    expect(await readlinkNormalized(link)).toBe(correctTarget);
   });
 
   it('is idempotent when re-run against a pre-existing correct hardlink', async () => {
@@ -143,8 +151,7 @@ describe('checkSymlinkHealth', () => {
   it('reports "ok" for a hardlink to the right target (the Windows file fallback)', async () => {
     // fs.link is cross-platform, so this exercises the health-check side of
     // the win32 hardlink fallback without needing an actual Windows runner
-    // (createSymlink's platform branch itself only fires on real win32,
-    // verified in CI — see .github/workflows/test.yml).
+    // (createSymlink's platform branch itself only fires on real win32).
     const target = path.join(tmpDir, 'shared', 'history.jsonl');
     const link = path.join(tmpDir, 'profile', 'history.jsonl');
     await fs.mkdir(path.dirname(target), { recursive: true });

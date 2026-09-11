@@ -16,6 +16,16 @@ async function ensureParentDir(p: string): Promise<void> {
   await fs.mkdir(path.dirname(p), { recursive: true });
 }
 
+/**
+ * Windows junctions report their reparse target with a trailing separator
+ * (`fs.readlink` returns `...\primary\`, never `...\primary`) while a normal
+ * symlink target never has one — strip it so comparisons against a
+ * `path.join`-built path aren't platform-flaky.
+ */
+export function stripTrailingSep(p: string): string {
+  return p.replace(/[\\/]+$/, '');
+}
+
 /** True if two existing paths are the same underlying file (i.e. `b` is a hardlink to `a`). */
 async function isSameFile(a: string, b: string): Promise<boolean> {
   try {
@@ -68,7 +78,10 @@ export async function createSymlink(
     const stat = await fs.lstat(linkPath);
     if (stat.isSymbolicLink()) {
       const current = await fs.readlink(linkPath);
-      if (path.resolve(path.dirname(linkPath), current) === path.resolve(targetPath)) {
+      if (
+        stripTrailingSep(path.resolve(path.dirname(linkPath), current)) ===
+        stripTrailingSep(path.resolve(targetPath))
+      ) {
         return; // already correct
       }
       await fs.unlink(linkPath);
@@ -128,12 +141,12 @@ export async function checkSymlinkHealth(
     return { entry, linkPath, status: 'broken', detail: String(err) };
   }
 
-  const absoluteTarget = path.resolve(path.dirname(linkPath), resolvedTarget);
+  const absoluteTarget = stripTrailingSep(path.resolve(path.dirname(linkPath), resolvedTarget));
   if (!(await pathExists(absoluteTarget))) {
     return { entry, linkPath, status: 'target-missing', detail: absoluteTarget };
   }
 
-  if (path.resolve(expectedTarget) !== absoluteTarget) {
+  if (stripTrailingSep(path.resolve(expectedTarget)) !== absoluteTarget) {
     return {
       entry,
       linkPath,
