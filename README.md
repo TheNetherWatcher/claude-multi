@@ -51,12 +51,12 @@ claude-multi remove work
 
 ## Commands
 
-- `claude-multi setup` — interactive; adopts an existing `~/.claude` as the `primary` profile and moves its shared data into `~/.claude-multi/shared`.
+- `claude-multi setup [--dry-run]` — interactive; adopts an existing `~/.claude` as the `primary` profile and moves its shared data into `~/.claude-multi/shared`. `--dry-run` prints the adoption plan (what would move where) without touching disk.
 - `claude-multi add <name>` — creates a profile, links shared state, offers to launch `claude` for `/login`.
 - `claude-multi list` — shows profiles, which is active/default, and symlink health.
 - `claude-multi run <name> [claude-args...]` — spawns `claude` under that profile, args forwarded as-is (`claude-multi run work --continue`).
 - `claude-multi link-shell` — idempotently writes `claude-<name>` shell functions into `~/.zshrc` / `~/.bashrc` / `~/.config/fish/config.fish`, inside a marked `# >>> claude-multi >>>` block.
-- `claude-multi remove <name>` — deletes a profile's auth/links and its shell alias. Shared history is never touched (`rm` on a directory of symlinks doesn't follow them).
+- `claude-multi remove <name> [--dry-run]` — deletes a profile's auth/links and its shell alias. Shared history is never touched (`rm` on a directory of symlinks doesn't follow them). `--dry-run` shows what would be removed without deleting anything.
 
 ## Project layout
 
