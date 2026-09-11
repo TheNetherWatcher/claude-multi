@@ -35,7 +35,8 @@ if (argv[2] === 'run') {
   program
     .command('setup')
     .description('Interactive setup: adopt an existing ~/.claude as the "primary" profile.')
-    .action(setupCommand);
+    .option('--dry-run', 'show what would happen without changing anything')
+    .action((opts) => setupCommand({ dryRun: opts.dryRun }));
 
   program
     .command('add <profile-name>')
@@ -66,7 +67,8 @@ if (argv[2] === 'run') {
     .command('remove <profile-name>')
     .description("Remove a profile's auth/links without touching shared history.")
     .option('-y, --yes', 'skip confirmation prompt')
-    .action((name, opts) => removeCommand(name, { yes: opts.yes }));
+    .option('--dry-run', 'show what would happen without changing anything')
+    .action((name, opts) => removeCommand(name, { yes: opts.yes, dryRun: opts.dryRun }));
 
   program.parseAsync(process.argv).catch((err) => {
     log.error(err instanceof Error ? err.message : String(err));

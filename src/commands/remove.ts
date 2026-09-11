@@ -1,13 +1,27 @@
 import * as p from '@clack/prompts';
-import { profileExists, removeProfile } from '../core/profile-manager.js';
+import { profileExists, profileDir, removeProfile } from '../core/profile-manager.js';
 import { syncShellAliases } from '../core/shell-sync.js';
 import { readState, writeState } from '../core/state.js';
 import { log } from '../utils/logger.js';
 
-export async function removeCommand(name: string, opts: { yes?: boolean } = {}): Promise<void> {
+export async function removeCommand(
+  name: string,
+  opts: { yes?: boolean; dryRun?: boolean } = {}
+): Promise<void> {
   if (!(await profileExists(name))) {
     log.error(`Profile "${name}" doesn't exist.`);
     process.exitCode = 1;
+    return;
+  }
+
+  if (opts.dryRun) {
+    const state = await readState();
+    log.info(`Would remove profile "${name}" at ${profileDir(name)}.`);
+    if (state.defaultProfile === name) {
+      log.info(`Would clear "${name}" as the default profile.`);
+    }
+    log.info('Would refresh shell aliases to drop its binding.');
+    log.dim('No changes made (--dry-run).');
     return;
   }
 

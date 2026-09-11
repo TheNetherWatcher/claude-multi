@@ -32,10 +32,8 @@ async function isSymlink(target: string): Promise<boolean> {
   }
 }
 
-export async function setupCommand(): Promise<void> {
+export async function setupCommand(opts: { dryRun?: boolean } = {}): Promise<void> {
   p.intro('claude-multi setup');
-  await fs.mkdir(PROFILES_DIR, { recursive: true });
-  await fs.mkdir(SHARED_DIR, { recursive: true });
 
   const state = await readState();
 
@@ -55,6 +53,25 @@ export async function setupCommand(): Promise<void> {
     p.outro('Nothing to adopt.');
     return;
   }
+
+  if (opts.dryRun) {
+    const primaryDir = profileDir('primary');
+    log.info(`Would move ${DEFAULT_CLAUDE_CONFIG_DIR} -> ${primaryDir} and adopt it as "primary".`);
+    log.info(`Would symlink ${DEFAULT_CLAUDE_CONFIG_DIR} back to ${primaryDir}.`);
+    for (const entry of SHARED_ENTRIES) {
+      const source = path.join(DEFAULT_CLAUDE_CONFIG_DIR, entry);
+      const exists = await pathExists(source);
+      log.info(
+        `  ${entry}: ${exists ? `would move into ${sharedEntryPath(entry)}` : 'not present, would be created empty in shared store'}`
+      );
+    }
+    log.info("Would capture the adopted profile's current credentials/identity.");
+    p.outro('No changes made (--dry-run).');
+    return;
+  }
+
+  await fs.mkdir(PROFILES_DIR, { recursive: true });
+  await fs.mkdir(SHARED_DIR, { recursive: true });
 
   const shouldAdopt = await p.confirm({
     message: `Found an existing ~/.claude directory. Adopt it as the "primary" profile ` +
