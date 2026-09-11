@@ -1,5 +1,9 @@
 # claude-multi
 
+[![CI](https://github.com/TheNetherWatcher/claude-multi/actions/workflows/test.yml/badge.svg)](https://github.com/TheNetherWatcher/claude-multi/actions/workflows/test.yml)
+[![npm version](https://img.shields.io/npm/v/claude-multi.svg)](https://www.npmjs.com/package/claude-multi)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Switch between multiple Claude Code accounts without losing session history, transcripts, or context.
 
 Rate limits in `@anthropic-ai/claude-code` are tied to the logged-in account. When you hit one, switching accounts the naive way (swapping `~/.claude` around) loses every transcript, project, and in-flight session. `claude-multi` keeps a single shared history store and gives each account its own isolated auth, so `claude --continue` works no matter which account you're on.
@@ -108,3 +112,11 @@ push — auth isolation is the one piece still open, tracked as future work.
 
 - Windows: no Credential Manager isolation yet (see above); everything else works.
 - Running two profiles concurrently can interleave writes to the shared `history.jsonl`. Fine in practice (small, append-only writes) but not file-locked — avoid it if you can.
+
+## Contributing
+
+Bug reports, feature requests, and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). This project follows a [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+[MIT](LICENSE)
