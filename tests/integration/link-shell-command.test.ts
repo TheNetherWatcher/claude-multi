@@ -30,7 +30,10 @@ describe('linkShellCommand', () => {
 
     const rc = await fs.readFile(process.env.CLAUDE_MULTI_RC_FILE!, 'utf8');
     expect(rc).toContain('# >>> claude-multi >>>');
-    expect(rc).toContain('claude-work()');
+    // Binding syntax depends on the real OS (win32 always maps to
+    // PowerShell in detectShell regardless of $SHELL) — assert the
+    // function name only, not shell-specific syntax.
+    expect(rc).toContain('claude-work');
   });
 
   it('is idempotent across repeated runs', async () => {
