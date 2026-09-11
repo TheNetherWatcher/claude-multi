@@ -1,6 +1,5 @@
 # claude-multi
 
-[![CI](https://github.com/TheNetherWatcher/claude-multi/actions/workflows/test.yml/badge.svg)](https://github.com/TheNetherWatcher/claude-multi/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/claude-multi.svg)](https://www.npmjs.com/package/claude-multi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -103,10 +102,8 @@ Manager has no equivalent — there's no clean "read this stored password
 back out" CLI, so building this correctly needs an empirical check on a
 real Windows box of what Claude Code actually does there (same way the
 macOS Keychain behavior and the `$HOME/.claude.json` `oauthAccount` leak
-were confirmed by inspection rather than assumed). CI (`.github/workflows/test.yml`)
-runs the test suite on `windows-latest` so the symlink/hardlink and
-PowerShell-profile logic get verified on a real Windows runner on every
-push — auth isolation is the one piece still open, tracked as future work.
+were confirmed by inspection rather than assumed) — auth isolation is the
+one piece still open, tracked as future work.
 
 ## Known limitations
 
